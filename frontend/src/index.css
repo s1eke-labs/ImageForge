@@ -873,7 +873,7 @@ textarea:focus {
   display: flex;
   width: min(100vw - 32px, 560px);
   flex-direction: column;
-  padding: 68px 44px 28px;
+  padding: 6px 30px 28px;
   border-left: 1px solid rgb(74 124 89 / 12%);
   border-radius: 28px 0 0 28px;
   background: var(--terra-surface);
@@ -889,6 +889,7 @@ textarea:focus {
 }
 
 .tasks-header {
+  min-height: 88px;
   margin-bottom: 58px;
 }
 
@@ -1462,8 +1463,12 @@ textarea:focus {
   }
 
   .tasks-drawer {
-    padding-top: 42px;
-    padding-inline: 24px;
+    padding-top: 6px;
+    padding-inline: 22px;
+  }
+
+  .tasks-header {
+    min-height: 76px;
   }
 
   .task-card {
