@@ -206,6 +206,9 @@ func parseInt(value string, fallback int) int {
 }
 
 func validateRequestedSize(value string) error {
+	if strings.EqualFold(strings.TrimSpace(value), "auto") {
+		return nil
+	}
 	width, height, err := parseRequestedSize(value)
 	if err != nil {
 		return err

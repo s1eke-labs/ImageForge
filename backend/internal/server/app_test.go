@@ -684,7 +684,6 @@ func TestTaskCreateValidatesRequestedSize(t *testing.T) {
 	e, _, userBearer := setupAuthenticatedUser(t)
 
 	cases := map[string]string{
-		"auto":          "auto",
 		"not-multiple":  "1025x1024",
 		"too-long":      "3856x1024",
 		"too-wide":      "3840x1024",
@@ -701,6 +700,26 @@ func TestTaskCreateValidatesRequestedSize(t *testing.T) {
 				t.Fatalf("create task with size %q status = %d, body = %s", size, taskResp.Code, taskResp.Body.String())
 			}
 		})
+	}
+}
+
+func TestTaskCreateAllowsAutoSize(t *testing.T) {
+	t.Parallel()
+	e, _, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskFields(t, e, userBearer, map[string]string{
+		"prompt": "一张赛博朋克城市海报",
+		"size":   "auto",
+	}, false)
+	if taskResp.Code != http.StatusCreated {
+		t.Fatalf("create task with auto size status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+	var createdTask struct {
+		Size string `json:"size"`
+	}
+	decode(t, taskResp.Body.Bytes(), &createdTask)
+	if createdTask.Size != "auto" {
+		t.Fatalf("created task size = %q, want auto", createdTask.Size)
 	}
 }
 

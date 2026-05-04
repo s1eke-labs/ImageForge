@@ -20,11 +20,6 @@ const qualities = [
   { value: 'medium', labelKey: 'create.quality.medium', level: 2 },
   { value: 'low', labelKey: 'create.quality.low', level: 1 },
 ]
-const qualityScale = {
-  low: 0.5,
-  medium: 0.75,
-  high: 1,
-}
 const minPixels = 655360
 const maxPixels = 8294400
 
@@ -39,10 +34,6 @@ function optionLabel(option, t) {
 function parseSize(value) {
   const [width, height] = value.split('x').map((part) => Number.parseInt(part, 10))
   return { width, height }
-}
-
-function nearestMultipleOf16(value) {
-  return Math.max(16, Math.round(value / 16) * 16)
 }
 
 function validateImageSize(width, height, t) {
@@ -67,14 +58,7 @@ function validateImageSize(width, height, t) {
 function sizeForSelection(size, quality, referenceDimensions, t) {
   const option = selectedOption(sizes, size)
   if (option.value === 'auto') {
-    if (!referenceDimensions) {
-      throw new Error(t('error.autoNeedsReference'))
-    }
-    const scale = qualityScale[quality] || qualityScale.low
-    const width = nearestMultipleOf16(referenceDimensions.width * scale)
-    const height = nearestMultipleOf16(referenceDimensions.height * scale)
-    validateImageSize(width, height, t)
-    return `${width}x${height}`
+    return 'auto'
   }
   const resolved = option.sizes?.[quality] || option.value
   const { width, height } = parseSize(resolved)
