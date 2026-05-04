@@ -1,0 +1,12 @@
+services:
+  imageforge:
+    build: .
+    container_name: imageforge
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8020}:8020"
+    environment:
+      - IMAGEFORGE_JWT_SECRET=${IMAGEFORGE_JWT_SECRET}
+      - IMAGEFORGE_DATA_DIR=/data
+    volumes:
+      - ${DATA_DIR:-./data}:/data

@@ -1,0 +1,34 @@
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+backend/frontend_dist/
+
+# Data & runtime
+backend/data/
+backend/tmp/
+data/
+dist
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+
+# AI agent tools
+.agents/
+.codex/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Environment (secrets)
+.env
+
+# Dependencies (rebuilt during build)
+frontend/node_modules
+
+# Build output (rebuilt during build)
+frontend/dist
+
+# Data & runtime
+data
+*.db
+*.db-shm
+*.db-wal
+
+# AI agent tools
+.agents
+.codex
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docs (not needed in image)
+docs
