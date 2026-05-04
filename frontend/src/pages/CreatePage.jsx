@@ -175,6 +175,7 @@ export default function CreatePage() {
   const [preview, setPreview] = useState('')
   const [referenceDimensions, setReferenceDimensions] = useState(null)
   const [styles, setStyles] = useState([])
+  const [selectedStyleId, setSelectedStyleId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tasksOpen, setTasksOpen] = useState(false)
@@ -319,7 +320,10 @@ export default function CreatePage() {
             <textarea
               id="prompt-input"
               value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
+              onChange={(event) => {
+                setPrompt(event.target.value)
+                setSelectedStyleId('')
+              }}
               placeholder={t('create.promptPlaceholder')}
               required
               rows={10}
@@ -336,8 +340,15 @@ export default function CreatePage() {
                         <button
                           key={item.id}
                           type="button"
+                          className={selectedStyleId === item.id ? 'selected' : ''}
                           onClick={() => {
-                            setPrompt(item.prompt)
+                            if (selectedStyleId === item.id) {
+                              setSelectedStyleId('')
+                              setPrompt('')
+                            } else {
+                              setSelectedStyleId(item.id)
+                              setPrompt(item.prompt)
+                            }
                             setSettingsOpen('')
                           }}
                         >

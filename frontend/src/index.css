@@ -597,6 +597,7 @@ textarea:focus {
 .quality-select .prompt-select-button {
   width: 102px;
   min-width: 102px;
+  font-size: 22px;
 }
 
 .prompt-select-button:hover,
@@ -668,6 +669,7 @@ textarea:focus {
 
 .prompt-menu button:hover,
 .prompt-menu button.selected {
+  background: rgb(74 124 89 / 8%);
   color: var(--terra-primary);
 }
 
@@ -1391,6 +1393,7 @@ textarea:focus {
     grid-template-columns: minmax(0, 1fr) 16px;
     width: 100%;
     min-width: 0;
+    font-size: 15px;
   }
 
   .style-glyph {
