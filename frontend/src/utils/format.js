@@ -1,14 +1,32 @@
-export function relativeTime(value) {
+export function relativeTime(value, locale = 'zh-CN') {
   if (!value) return ''
   const date = new Date(value)
   const seconds = Math.max(1, Math.round((Date.now() - date.getTime()) / 1000))
-  if (seconds < 60) return `${seconds} 秒前`
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  if (seconds < 60) return formatter.format(-seconds, 'second')
   const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} 分钟前`
+  if (minutes < 60) return formatter.format(-minutes, 'minute')
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} 小时前`
+  if (hours < 24) return formatter.format(-hours, 'hour')
   const days = Math.round(hours / 24)
-  return `${days} 天前`
+  return formatter.format(-days, 'day')
+}
+
+export function duration(value, locale = 'zh-CN') {
+  if (!value) return '-'
+  const seconds = Math.max(1, Math.round(value))
+  const zh = locale === 'zh-CN'
+  if (seconds < 60) return zh ? `${seconds} 秒` : `${seconds} sec`
+  const minutes = Math.floor(seconds / 60)
+  const rest = Math.round(seconds % 60)
+  if (minutes < 60) {
+    if (!rest) return zh ? `${minutes} 分` : `${minutes} min`
+    return zh ? `${minutes} 分 ${rest} 秒` : `${minutes} min ${rest} sec`
+  }
+  const hours = Math.floor(minutes / 60)
+  const minuteRest = minutes % 60
+  if (!minuteRest) return zh ? `${hours} 小时` : `${hours} hr`
+  return zh ? `${hours} 小时 ${minuteRest} 分` : `${hours} hr ${minuteRest} min`
 }
 
 export function bytes(value) {

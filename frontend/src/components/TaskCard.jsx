@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AlertCircle, ChevronDown, Clock3, Hourglass, Image, RefreshCw } from 'lucide-react'
 import { useFileObjectURL } from '../hooks/useFileObjectURL.js'
+import { useI18n } from '../i18n/useI18n.js'
 import { useTaskStore } from '../stores/taskStore.js'
 import StatusBadge from './StatusBadge.jsx'
 import { relativeTime } from '../utils/format.js'
@@ -21,12 +22,13 @@ export default function TaskCard({ task }) {
   const [retryError, setRetryError] = useState('')
   const retryTask = useTaskStore((state) => state.retryTask)
   const fetchTasks = useTaskStore((state) => state.fetchTasks)
+  const { locale, t } = useI18n()
   const done = task.status === 'succeeded'
   const failed = task.status === 'failed' || task.status === 'canceled'
   const thumbPath = task.result_thumb_path || task.result_image_path
   const thumb = useFileObjectURL(thumbPath)
   const Icon = statusIcon[task.status] || Image
-  const activity = task.status === 'claimed' ? 'Generating' : task.status === 'pending' ? 'Queued' : relativeTime(task.finished_at || task.created_at)
+  const activity = task.status === 'claimed' ? t('task.generating') : task.status === 'pending' ? t('task.queued') : relativeTime(task.finished_at || task.created_at, locale)
 
   const handleClick = () => {
     if (done) navigate(`/artworks/${task.id}`)
@@ -42,7 +44,7 @@ export default function TaskCard({ task }) {
       await retryTask(task.id)
       await fetchTasks()
     } catch (error) {
-      setRetryError(error?.message || '重试失败')
+      setRetryError(error?.message || t('error.retryTask'))
       setOpen(true)
     } finally {
       setRetrying(false)
@@ -62,7 +64,7 @@ export default function TaskCard({ task }) {
         <div className="task-card-head">
           <p>{task.prompt}</p>
           {failed && (
-            <button type="button" className="retry-button" onClick={handleRetry} disabled={retrying} aria-label="Retry generation">
+            <button type="button" className="retry-button" onClick={handleRetry} disabled={retrying} aria-label={t('task.retryAria')}>
               <RefreshCw size={17} className={retrying ? 'spinning' : ''} aria-hidden="true" />
             </button>
           )}
@@ -84,10 +86,10 @@ export default function TaskCard({ task }) {
             }}
           >
             <ChevronDown size={16} className={open ? 'rotated' : ''} />
-            错误详情
+            {t('task.errorDetails')}
           </button>
         )}
-        {open && <div className="error-box">{retryError || task.error_message || task.error_code || (task.status === 'canceled' ? '任务已取消' : '任务失败')}</div>}
+        {open && <div className="error-box">{retryError || task.error_message || task.error_code || (task.status === 'canceled' ? t('task.canceled') : t('task.failed'))}</div>}
       </div>
     </article>
   )

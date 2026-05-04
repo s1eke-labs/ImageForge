@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { LogIn } from 'lucide-react'
+import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
 import logo from '../assets/logo.svg'
+import { useI18n } from '../i18n/useI18n.js'
 import { useAuthStore } from '../stores/authStore.js'
 
 export default function LoginPage() {
@@ -12,6 +14,7 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useI18n()
 
   const submit = async (event) => {
     event.preventDefault()
@@ -21,7 +24,7 @@ export default function LoginPage() {
       await login(username, password)
       navigate(location.state?.from?.pathname || '/create', { replace: true })
     } catch {
-      setError('Username or password is incorrect')
+      setError(t('login.error'))
     } finally {
       setLoading(false)
     }
@@ -30,38 +33,39 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <form className="login-panel" onSubmit={submit}>
+        <LanguageSwitcher className="login-language-switcher" />
         <div className="login-logo" aria-hidden="true">
           <img src={logo} alt="" />
         </div>
         <div className="login-copy">
-          <h1>Welcome Back</h1>
-          <p>Sign in to continue.</p>
+          <h1>{t('login.title')}</h1>
+          <p>{t('login.subtitle')}</p>
         </div>
         <label>
-          Username
+          {t('login.username')}
           <input
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             autoComplete="username"
-            placeholder="Enter your username"
+            placeholder={t('login.usernamePlaceholder')}
             required
           />
         </label>
         <label>
-          Password
+          {t('login.password')}
           <input
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type="password"
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder={t('login.passwordPlaceholder')}
             required
           />
         </label>
         {error && <div className="form-error">{error}</div>}
         <button className="primary-button" type="submit" disabled={loading}>
           <LogIn size={18} />
-          {loading ? 'Logging in' : 'Log In'}
+          {loading ? t('login.loading') : t('login.submit')}
         </button>
       </form>
     </main>

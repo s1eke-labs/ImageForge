@@ -122,6 +122,13 @@ img {
   box-shadow: 0 12px 34px rgb(46 50 48 / 5%);
 }
 
+.topbar-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .brand-mark {
   display: inline-flex;
   min-width: 0;
@@ -161,6 +168,29 @@ img {
   color: var(--terra-primary);
 }
 
+.language-switcher {
+  display: inline-flex;
+  min-width: 76px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgb(74 124 89 / 18%);
+  border-radius: 999px;
+  background: var(--terra-surface);
+  color: var(--terra-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgb(46 50 48 / 5%);
+}
+
+.language-switcher:hover {
+  border-color: rgb(74 124 89 / 32%);
+  color: var(--terra-primary);
+}
+
 .login-page {
   display: grid;
   height: 100svh;
@@ -172,6 +202,7 @@ img {
 }
 
 .login-panel {
+  position: relative;
   display: grid;
   width: min(100%, 520px);
   height: min(840px, 100%);
@@ -179,6 +210,12 @@ img {
   align-content: center;
   padding: clamp(24px, 6svh, 48px) 28px clamp(28px, 6svh, 56px);
   background: var(--terra-bg);
+}
+
+.login-language-switcher {
+  position: absolute;
+  top: clamp(12px, 3svh, 24px);
+  right: 0;
 }
 
 .login-logo {
@@ -506,7 +543,7 @@ textarea:focus {
   left: 24px;
   display: flex;
   align-items: flex-end;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 16px;
   pointer-events: none;
 }
@@ -526,12 +563,14 @@ textarea:focus {
 .prompt-select {
   position: relative;
   display: inline-flex;
+  min-width: 0;
 }
 
 .prompt-select-button {
-  display: inline-flex;
-  width: 152px;
-  min-width: 152px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  width: 112px;
+  min-width: 112px;
   height: 58px;
   flex: 0 0 auto;
   align-items: center;
@@ -548,19 +587,16 @@ textarea:focus {
 }
 
 .ratio-select .prompt-select-button {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) 20px;
-  width: 180px;
-  min-width: 180px;
+  grid-template-columns: 34px minmax(0, 1fr) 20px;
+  width: 142px;
+  min-width: 142px;
   justify-content: initial;
 }
 
-.style-select .prompt-select-button {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 20px;
-  width: 144px;
-  min-width: 144px;
-  justify-content: initial;
+.style-select .prompt-select-button,
+.quality-select .prompt-select-button {
+  width: 102px;
+  min-width: 102px;
 }
 
 .prompt-select-button:hover,
@@ -571,6 +607,9 @@ textarea:focus {
 
 .prompt-select-button > span:not(.ratio-glyph, .quality-glyph) {
   min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -687,17 +726,17 @@ textarea:focus {
 
 .ratio-glyph {
   display: grid;
-  width: 54px;
+  width: 34px;
   height: 34px;
-  flex: 0 0 54px;
+  flex: 0 0 34px;
   justify-self: center;
   place-items: center;
 }
 
 .ratio-shape {
   display: block;
-  width: min(46px, calc(28px * var(--ratio-w) / var(--ratio-h)));
-  height: min(28px, calc(46px * var(--ratio-h) / var(--ratio-w)));
+  width: min(30px, calc(22px * var(--ratio-w) / var(--ratio-h)));
+  height: min(22px, calc(30px * var(--ratio-h) / var(--ratio-w)));
   border: 2px solid var(--terra-line);
   border-radius: 6px;
   background: transparent;
@@ -706,8 +745,8 @@ textarea:focus {
 .ratio-auto-shape {
   position: relative;
   display: block;
-  width: 38px;
-  height: 22px;
+  width: 30px;
+  height: 18px;
   border: 2px solid var(--terra-line);
   border-radius: 6px;
   background: transparent;
@@ -726,7 +765,7 @@ textarea:focus {
 
 .quality-glyph {
   display: inline-flex;
-  width: 36px;
+  width: 44px;
   height: 28px;
   align-items: end;
   justify-content: center;
@@ -1245,6 +1284,22 @@ textarea:focus {
     font-size: 26px;
   }
 
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .language-switcher {
+    min-width: 54px;
+    height: 38px;
+    gap: 4px;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+
+  .language-switcher svg {
+    display: none;
+  }
+
   .login-page {
     padding: clamp(16px, 3svh, 22px);
   }
@@ -1310,28 +1365,32 @@ textarea:focus {
   }
 
   .prompt-selects {
+    display: inline-grid;
+    width: auto;
+    grid-template-columns: 72px 118px 72px;
     gap: 8px;
   }
 
   .prompt-select-button {
-    width: 116px;
-    min-width: 116px;
+    width: 100%;
+    min-width: 0;
     height: 50px;
-    gap: 8px;
-    padding: 0 10px;
-    font-size: 19px;
+    gap: 4px;
+    padding: 0 6px;
+    font-size: 17px;
   }
 
   .ratio-select .prompt-select-button {
-    grid-template-columns: 46px minmax(0, 1fr) 18px;
-    width: 142px;
-    min-width: 142px;
+    grid-template-columns: 28px minmax(0, 1fr) 16px;
+    width: 100%;
+    min-width: 0;
   }
 
-  .style-select .prompt-select-button {
-    grid-template-columns: 28px minmax(0, 1fr) 18px;
-    width: 96px;
-    min-width: 96px;
+  .style-select .prompt-select-button,
+  .quality-select .prompt-select-button {
+    grid-template-columns: minmax(0, 1fr) 16px;
+    width: 100%;
+    min-width: 0;
   }
 
   .style-glyph {
@@ -1344,10 +1403,6 @@ textarea:focus {
     width: 36px;
     height: 36px;
     border-radius: 9px;
-  }
-
-  .prompt-select-button .quality-glyph {
-    display: none;
   }
 
   .prompt-menu {
@@ -1363,19 +1418,19 @@ textarea:focus {
   }
 
   .ratio-glyph {
-    width: 46px;
+    width: 28px;
     height: 30px;
-    flex-basis: 46px;
+    flex-basis: 28px;
   }
 
   .ratio-shape {
-    width: min(38px, calc(24px * var(--ratio-w) / var(--ratio-h)));
-    height: min(24px, calc(38px * var(--ratio-h) / var(--ratio-w)));
+    width: min(26px, calc(20px * var(--ratio-w) / var(--ratio-h)));
+    height: min(20px, calc(26px * var(--ratio-h) / var(--ratio-w)));
   }
 
   .ratio-auto-shape {
-    width: 34px;
-    height: 20px;
+    width: 26px;
+    height: 18px;
   }
 
   .ratio-auto-shape::after {
@@ -1383,6 +1438,15 @@ textarea:focus {
     left: 4px;
     width: 12px;
     height: 5px;
+  }
+
+  .quality-glyph {
+    width: 28px;
+    gap: 3px;
+  }
+
+  .quality-glyph i {
+    width: 6px;
   }
 
   .quality-menu {
@@ -1450,5 +1514,25 @@ textarea:focus {
 
   .meta-panel > div {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-topbar {
+    padding-inline: 16px;
+  }
+
+  .brand-mark {
+    gap: 8px;
+    font-size: 22px;
+  }
+
+  .brand-mark img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .language-switcher {
+    min-width: 46px;
   }
 }

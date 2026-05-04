@@ -2,9 +2,11 @@ import { useCallback, useEffect } from 'react'
 import { AlertCircle, CheckCircle2, LoaderCircle, X } from 'lucide-react'
 import TaskCard from '../components/TaskCard.jsx'
 import { usePolling } from '../hooks/usePolling.js'
+import { useI18n } from '../i18n/useI18n.js'
 import { useTaskStore } from '../stores/taskStore.js'
 
 export default function TaskListPage({ open = true, onClose }) {
+  const { t } = useI18n()
   const tasks = useTaskStore((state) => state.tasks)
   const loading = useTaskStore((state) => state.loading)
   const fetchTasks = useTaskStore((state) => state.fetchTasks)
@@ -25,30 +27,30 @@ export default function TaskListPage({ open = true, onClose }) {
   return (
     <aside className={`tasks-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
       <header className="tasks-header">
-        <h1>Generation Tasks</h1>
-        <button type="button" className="topbar-icon" onClick={onClose} aria-label="Close generation tasks">
+        <h1>{t('tasks.title')}</h1>
+        <button type="button" className="topbar-icon" onClick={onClose} aria-label={t('tasks.closeAria')}>
           <X size={28} />
         </button>
       </header>
-      {!loading && tasks.length === 0 && <div className="empty-state">No generation tasks yet.</div>}
+      {!loading && tasks.length === 0 && <div className="empty-state">{t('tasks.empty')}</div>}
       <section className="task-section">
         <h2>
           <LoaderCircle size={18} />
-          In Progress
+          {t('tasks.inProgress')}
         </h2>
         <div className="task-list">{activeTasks.map((task) => <TaskCard key={task.id} task={task} />)}</div>
       </section>
       <section className="task-section">
         <h2>
           <CheckCircle2 size={18} />
-          Completed
+          {t('tasks.completed')}
         </h2>
         <div className="task-list">{completedTasks.map((task) => <TaskCard key={task.id} task={task} />)}</div>
       </section>
       <section className="task-section">
         <h2>
           <AlertCircle size={18} />
-          Failed
+          {t('tasks.failed')}
         </h2>
         <div className="task-list">{failedTasks.map((task) => <TaskCard key={task.id} task={task} />)}</div>
       </section>

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Menu, Palette, Plus, Sparkles, X } from 'lucide-react'
+import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
 import TaskListPage from './TaskListPage.jsx'
 import logo from '../assets/logo.svg'
+import { useI18n } from '../i18n/useI18n.js'
 import { useTaskStore } from '../stores/taskStore.js'
 
 const sizes = [
-  { value: 'auto', label: '自动', icon: 'auto' },
+  { value: 'auto', labelKey: 'create.size.auto', icon: 'auto' },
   { value: '1:1', label: '1:1', sizes: { low: '1024x1024', medium: '1536x1536', high: '2048x2048' } },
   { value: '3:4', label: '3:4', ratio: [3, 4], sizes: { low: '768x1024', medium: '1536x2048', high: '2304x3072' } },
   { value: '4:3', label: '4:3', ratio: [4, 3], sizes: { low: '1024x768', medium: '2048x1536', high: '3072x2304' } },
@@ -14,9 +16,9 @@ const sizes = [
   { value: '21:9', label: '21:9', ratio: [21, 9], sizes: { low: '1344x576', medium: '2016x864', high: '3360x1440' } },
 ]
 const qualities = [
-  { value: 'high', label: '超清', level: 3 },
-  { value: 'medium', label: '高清', level: 2 },
-  { value: 'low', label: '标清', level: 1 },
+  { value: 'high', labelKey: 'create.quality.high', level: 3 },
+  { value: 'medium', labelKey: 'create.quality.medium', level: 2 },
+  { value: 'low', labelKey: 'create.quality.low', level: 1 },
 ]
 const qualityScale = {
   low: 0.5,
@@ -30,6 +32,10 @@ function selectedOption(options, value) {
   return options.find((item) => item.value === value || item.id === value) || options[0]
 }
 
+function optionLabel(option, t) {
+  return option.labelKey ? t(option.labelKey) : option.label
+}
+
 function parseSize(value) {
   const [width, height] = value.split('x').map((part) => Number.parseInt(part, 10))
   return { width, height }
@@ -39,44 +45,44 @@ function nearestMultipleOf16(value) {
   return Math.max(16, Math.round(value / 16) * 16)
 }
 
-function validateImageSize(width, height) {
+function validateImageSize(width, height, t) {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    throw new Error('分辨率无效')
+    throw new Error(t('error.invalidResolution'))
   }
   if (width % 16 !== 0 || height % 16 !== 0) {
-    throw new Error('宽和高都必须是 16px 的倍数')
+    throw new Error(t('error.sizeMultiple'))
   }
   if (Math.max(width, height) > 3840) {
-    throw new Error('最长边不能超过 3840px')
+    throw new Error(t('error.maxSide'))
   }
   if (Math.max(width, height) / Math.min(width, height) > 3) {
-    throw new Error('长边与短边比例不能超过 3:1')
+    throw new Error(t('error.maxRatio'))
   }
   const pixels = width * height
   if (pixels < minPixels || pixels > maxPixels) {
-    throw new Error('总像素数必须在 655,360 到 8,294,400 之间')
+    throw new Error(t('error.pixelRange'))
   }
 }
 
-function sizeForSelection(size, quality, referenceDimensions) {
+function sizeForSelection(size, quality, referenceDimensions, t) {
   const option = selectedOption(sizes, size)
   if (option.value === 'auto') {
     if (!referenceDimensions) {
-      throw new Error('自动比例需要先上传参考图')
+      throw new Error(t('error.autoNeedsReference'))
     }
     const scale = qualityScale[quality] || qualityScale.low
     const width = nearestMultipleOf16(referenceDimensions.width * scale)
     const height = nearestMultipleOf16(referenceDimensions.height * scale)
-    validateImageSize(width, height)
+    validateImageSize(width, height, t)
     return `${width}x${height}`
   }
   const resolved = option.sizes?.[quality] || option.value
   const { width, height } = parseSize(resolved)
-  validateImageSize(width, height)
+  validateImageSize(width, height, t)
   return resolved
 }
 
-function readImageDimensions(file) {
+function readImageDimensions(file, t) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const image = new window.Image()
@@ -86,7 +92,7 @@ function readImageDimensions(file) {
     }
     image.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('无法读取参考图尺寸'))
+      reject(new Error(t('error.readReferenceDimensions')))
     }
     image.src = url
   })
@@ -101,13 +107,13 @@ function imageFileFromClipboard(event) {
   return new window.File([file], file.name || `pasted-reference.${extension}`, { type: file.type })
 }
 
-function normalizeStyles(data) {
+function normalizeStyles(data, t) {
   const items = Array.isArray(data) ? data : data?.styles
   if (!Array.isArray(items)) return []
   return items
     .map((item, index) => ({
       id: String(item.id || item.label || `style-${index}`),
-      label: String(item.label || item.name || item.id || `风格 ${index + 1}`),
+      label: String(item.label || item.name || item.id || `${t('create.style')} ${index + 1}`),
       prompt: String(item.prompt || ''),
       preview: item.preview ? String(item.preview) : '',
     }))
@@ -161,6 +167,7 @@ function StylePreview({ option }) {
 }
 
 export default function CreatePage() {
+  const { t } = useI18n()
   const [prompt, setPrompt] = useState('')
   const [size, setSize] = useState('1:1')
   const [quality, setQuality] = useState('low')
@@ -195,7 +202,7 @@ export default function CreatePage() {
     window.fetch('/prompt-styles/styles.json', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : []))
       .then((data) => {
-        if (active) setStyles(normalizeStyles(data))
+        if (active) setStyles(normalizeStyles(data, t))
       })
       .catch(() => {
         if (active) setStyles([])
@@ -203,7 +210,7 @@ export default function CreatePage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (!settingsOpen) return undefined
@@ -221,17 +228,17 @@ export default function CreatePage() {
     setLoading(true)
     setError('')
     try {
-      const finalDimensions = file && !referenceDimensions ? await readImageDimensions(file) : referenceDimensions
+      const finalDimensions = file && !referenceDimensions ? await readImageDimensions(file, t) : referenceDimensions
       if (file && !referenceDimensions) setReferenceDimensions(finalDimensions)
       const form = new FormData()
       form.set('prompt', prompt.trim())
-      form.set('size', sizeForSelection(size, quality, finalDimensions))
+      form.set('size', sizeForSelection(size, quality, finalDimensions, t))
       if (file) form.set('reference_image', file)
       await createTask(form)
       fetchTasks().catch(() => {})
       setTasksOpen(true)
     } catch (err) {
-      setError(err?.message || '创建任务失败')
+      setError(err?.message || t('error.createTask'))
     } finally {
       setLoading(false)
     }
@@ -244,12 +251,12 @@ export default function CreatePage() {
     setReferenceDimensions(null)
     setError('')
     if (selected) {
-      readImageDimensions(selected)
+      readImageDimensions(selected, t)
         .then((dimensions) => {
           if (fileVersionRef.current === version) setReferenceDimensions(dimensions)
         })
         .catch((err) => {
-          if (fileVersionRef.current === version) setError(err?.message || '无法读取参考图尺寸')
+          if (fileVersionRef.current === version) setError(err?.message || t('error.readReferenceDimensions'))
         })
     }
   }
@@ -280,16 +287,19 @@ export default function CreatePage() {
           <img src={logo} alt="" />
           <span>ImageForge</span>
         </div>
-        <button type="button" className="topbar-icon" onClick={() => setTasksOpen(true)} aria-label="View generation tasks">
-          <Menu size={28} />
-        </button>
+        <div className="topbar-actions">
+          <LanguageSwitcher />
+          <button type="button" className="topbar-icon" onClick={() => setTasksOpen(true)} aria-label={t('create.tasksAria')}>
+            <Menu size={28} />
+          </button>
+        </div>
       </header>
       <form className="create-form" onSubmit={submit}>
         <div className="field">
           <span className="prompt-label-row">
-            <label htmlFor="prompt-input">Image Prompt</label>
+            <label htmlFor="prompt-input">{t('create.promptLabel')}</label>
             <span className="reference-control">
-              <span className={`reference-picker ${preview ? 'has-preview' : ''}`} aria-label="Upload a reference photo">
+              <span className={`reference-picker ${preview ? 'has-preview' : ''}`} aria-label={t('create.referenceUploadAria')}>
                 {preview ? <img src={preview} alt="" /> : <Plus size={28} />}
                 <input
                   ref={fileInputRef}
@@ -299,7 +309,7 @@ export default function CreatePage() {
                 />
               </span>
               {preview && (
-                <button type="button" className="reference-clear" onClick={clearReferenceImage} aria-label="Remove reference photo">
+                <button type="button" className="reference-clear" onClick={clearReferenceImage} aria-label={t('create.referenceRemoveAria')}>
                   <X size={16} />
                 </button>
               )}
@@ -310,7 +320,7 @@ export default function CreatePage() {
               id="prompt-input"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder="A cozy cabin in an autumn forest..."
+              placeholder={t('create.promptPlaceholder')}
               required
               rows={10}
             />
@@ -320,7 +330,7 @@ export default function CreatePage() {
                   {settingsOpen === 'style' && (
                     <span className="prompt-menu style-menu">
                       {styles.length === 0 && (
-                        <span className="prompt-menu-empty">暂无风格</span>
+                        <span className="prompt-menu-empty">{t('create.noStyles')}</span>
                       )}
                       {styles.map((item) => (
                         <button
@@ -344,8 +354,7 @@ export default function CreatePage() {
                     aria-haspopup="menu"
                     aria-expanded={settingsOpen === 'style'}
                   >
-                    <StyleGlyph />
-                    <span>风格</span>
+                    <span>{t('create.style')}</span>
                     <ChevronDown size={19} aria-hidden="true" />
                   </button>
                 </span>
@@ -363,7 +372,7 @@ export default function CreatePage() {
                           }}
                         >
                           <RatioGlyph option={item} />
-                          <span>{item.label}</span>
+                          <span>{optionLabel(item, t)}</span>
                         </button>
                       ))}
                     </span>
@@ -376,7 +385,7 @@ export default function CreatePage() {
                     aria-expanded={settingsOpen === 'size'}
                   >
                     <RatioGlyph option={currentSize} />
-                    <span>{currentSize.label}</span>
+                    <span>{optionLabel(currentSize, t)}</span>
                     <ChevronDown size={19} aria-hidden="true" />
                   </button>
                 </span>
@@ -394,7 +403,7 @@ export default function CreatePage() {
                           }}
                         >
                           <QualityGlyph option={item} />
-                          <span>{item.label}</span>
+                          <span>{optionLabel(item, t)}</span>
                         </button>
                       ))}
                     </span>
@@ -406,8 +415,7 @@ export default function CreatePage() {
                     aria-haspopup="menu"
                     aria-expanded={settingsOpen === 'quality'}
                   >
-                    <QualityGlyph option={currentQuality} />
-                    <span>{currentQuality.label}</span>
+                    <span>{optionLabel(currentQuality, t)}</span>
                     <ChevronDown size={19} aria-hidden="true" />
                   </button>
                 </span>
@@ -418,7 +426,7 @@ export default function CreatePage() {
         {error && <div className="form-error">{error}</div>}
         <button className="primary-button sticky-action" type="submit" disabled={loading || !prompt.trim()}>
           <Sparkles size={18} />
-          {loading ? 'Generating' : 'Generate'}
+          {loading ? t('create.generating') : t('create.generate')}
         </button>
       </form>
       <div className={`tasks-scrim ${tasksOpen ? 'open' : ''}`} onClick={() => setTasksOpen(false)} />
