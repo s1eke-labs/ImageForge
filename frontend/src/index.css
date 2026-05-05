@@ -55,6 +55,7 @@ img {
 }
 
 .app-shell {
+  height: 100vh;
   height: 100svh;
   min-height: 100vh;
   overflow: hidden;
@@ -193,10 +194,12 @@ img {
 
 .login-page {
   display: grid;
+  height: 100vh;
   height: 100svh;
   min-height: 0;
   overflow: hidden;
   place-items: center;
+  padding: clamp(18px, 3vh, 28px);
   padding: clamp(18px, 3svh, 28px);
   background: var(--terra-bg);
 }
@@ -208,21 +211,27 @@ img {
   height: min(840px, 100%);
   min-height: 0;
   align-content: center;
+  grid-auto-rows: min-content;
+  padding: clamp(24px, 6vh, 48px) 28px clamp(28px, 6vh, 56px);
   padding: clamp(24px, 6svh, 48px) 28px clamp(28px, 6svh, 56px);
   background: var(--terra-bg);
 }
 
 .login-language-switcher {
   position: absolute;
+  top: clamp(12px, 3vh, 24px);
   top: clamp(12px, 3svh, 24px);
   right: 0;
 }
 
 .login-logo {
   display: grid;
+  width: clamp(104px, 16vh, 154px);
   width: clamp(104px, 16svh, 154px);
+  height: clamp(104px, 16vh, 154px);
   height: clamp(104px, 16svh, 154px);
   place-items: center;
+  margin: 0 auto clamp(24px, 5vh, 48px);
   margin: 0 auto clamp(24px, 5svh, 48px);
   border-radius: 999px;
   background: #f4e4c9;
@@ -230,12 +239,15 @@ img {
 }
 
 .login-logo img {
+  width: clamp(50px, 7vh, 66px);
   width: clamp(50px, 7svh, 66px);
+  height: clamp(50px, 7vh, 66px);
   height: clamp(50px, 7svh, 66px);
   border-radius: 14px;
 }
 
 .login-copy {
+  margin-bottom: clamp(24px, 5vh, 48px);
   margin-bottom: clamp(24px, 5svh, 48px);
   text-align: center;
 }
@@ -283,6 +295,7 @@ input {
 }
 
 .login-panel input {
+  height: clamp(52px, 7.5vh, 72px);
   height: clamp(52px, 7.5svh, 72px);
   padding: 0 22px;
   font-size: 20px;
@@ -307,6 +320,7 @@ textarea:focus {
 }
 
 .login-panel label + label {
+  margin-top: clamp(14px, 3vh, 24px);
   margin-top: clamp(14px, 3svh, 24px);
 }
 
@@ -343,7 +357,9 @@ textarea:focus {
 }
 
 .login-panel .primary-button {
+  min-height: clamp(52px, 7.5vh, 72px);
   min-height: clamp(52px, 7.5svh, 72px);
+  margin-top: clamp(24px, 5vh, 44px);
   margin-top: clamp(24px, 5svh, 44px);
   border-radius: 28px;
   font-size: 22px;
@@ -1126,6 +1142,7 @@ textarea:focus {
   row-gap: 20px;
   height: 100%;
   max-width: 680px;
+  min-height: 100vh;
   min-height: 100svh;
   margin: 0 auto;
   padding-top: 36px;
@@ -1273,18 +1290,25 @@ textarea:focus {
 }
 
 @media (max-width: 560px) {
+  .app-shell {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
   .page {
     padding-inline: 18px;
   }
 
   .app-topbar {
-    min-height: 76px;
+    min-height: clamp(60px, 11vh, 76px);
+    min-height: clamp(60px, 11svh, 76px);
     margin: -18px -18px 14px;
-    padding: 18px 22px;
+    padding: clamp(12px, 2.6vh, 18px) 22px;
+    padding: clamp(12px, 2.6svh, 18px) 22px;
   }
 
   .brand-mark {
-    font-size: 26px;
+    font-size: clamp(22px, 7vw, 26px);
   }
 
   .topbar-actions {
@@ -1304,97 +1328,134 @@ textarea:focus {
   }
 
   .login-page {
-    padding: clamp(16px, 3svh, 22px);
+    align-items: stretch;
+    padding: clamp(12px, 3vh, 20px);
+    padding: clamp(12px, 3svh, 20px);
   }
 
   .login-panel {
     height: 100%;
     min-height: 0;
-    padding: clamp(28px, 6svh, 44px) 0 clamp(34px, 7svh, 56px);
+    align-content: center;
+    padding: clamp(28px, 6vh, 44px) 0 clamp(26px, 6vh, 48px);
+    padding: clamp(28px, 6svh, 44px) 0 clamp(26px, 6svh, 48px);
   }
 
   .login-logo {
-    width: clamp(96px, 18svh, 124px);
-    height: clamp(96px, 18svh, 124px);
-    margin-bottom: clamp(24px, 6svh, 44px);
+    width: clamp(78px, 16vh, 124px);
+    width: clamp(78px, 16svh, 124px);
+    height: clamp(78px, 16vh, 124px);
+    height: clamp(78px, 16svh, 124px);
+    margin-bottom: clamp(16px, 4.8vh, 36px);
+    margin-bottom: clamp(16px, 4.8svh, 36px);
   }
 
   .login-logo img {
-    width: clamp(44px, 8svh, 54px);
-    height: clamp(44px, 8svh, 54px);
+    width: clamp(38px, 7vh, 54px);
+    width: clamp(38px, 7svh, 54px);
+    height: clamp(38px, 7vh, 54px);
+    height: clamp(38px, 7svh, 54px);
   }
 
   .login-panel h1 {
-    font-size: 39px;
+    font-size: clamp(32px, 10vw, 39px);
   }
 
   .login-copy {
-    margin-bottom: clamp(24px, 6svh, 44px);
+    margin-bottom: clamp(18px, 4.8vh, 36px);
+    margin-bottom: clamp(18px, 4.8svh, 36px);
   }
 
   .login-copy p {
-    margin-top: 10px;
-    font-size: 18px;
+    margin-top: 8px;
+    font-size: clamp(15px, 4.4vw, 18px);
   }
 
   .login-panel input {
-    height: clamp(54px, 10svh, 66px);
+    height: clamp(48px, 8.5vh, 62px);
+    height: clamp(48px, 8.5svh, 62px);
     padding-inline: 18px;
-    font-size: 18px;
+    font-size: 17px;
+  }
+
+  .login-panel label + label {
+    margin-top: clamp(12px, 2.6vh, 20px);
+    margin-top: clamp(12px, 2.6svh, 20px);
   }
 
   .login-panel .primary-button {
-    min-height: clamp(54px, 10svh, 66px);
-    margin-top: clamp(24px, 6svh, 42px);
+    min-height: clamp(50px, 8.8vh, 62px);
+    min-height: clamp(50px, 8.8svh, 62px);
+    margin-top: clamp(18px, 4.4vh, 34px);
+    margin-top: clamp(18px, 4.4svh, 34px);
     border-radius: 25px;
-    font-size: 20px;
+    font-size: 19px;
+  }
+
+  .create-page {
+    padding: 18px 18px clamp(14px, 2.6vh, 20px);
+    padding: 18px 18px clamp(14px, 2.6svh, 20px);
+  }
+
+  .create-form > * + * {
+    margin-top: clamp(12px, 2.4vh, 18px);
+    margin-top: clamp(12px, 2.4svh, 18px);
   }
 
   .field > span:first-child {
     font-size: 22px;
   }
 
+  .reference-picker {
+    width: clamp(48px, 13vw, 58px);
+    height: clamp(48px, 13vw, 58px);
+    border-radius: 16px;
+  }
+
   .prompt-field textarea {
-    min-height: 150px;
-    padding: 24px 18px 104px;
+    min-height: 0;
+    padding: clamp(18px, 4vh, 24px) 16px clamp(88px, 17vh, 104px);
+    padding: clamp(18px, 4svh, 24px) 16px clamp(88px, 17svh, 104px);
     font-size: 18px;
   }
 
   .prompt-bottom-tools {
-    right: 16px;
-    bottom: 16px;
-    left: 16px;
+    right: 10px;
+    bottom: 12px;
+    left: 10px;
     gap: 10px;
   }
 
   .prompt-selects {
     display: inline-grid;
-    width: auto;
-    grid-template-columns: 72px 118px 72px;
-    gap: 8px;
+    width: min(100%, 252px);
+    grid-template-columns: 64px minmax(104px, 1fr) 64px;
+    gap: 6px;
   }
 
   .prompt-select-button {
     width: 100%;
     min-width: 0;
-    height: 50px;
+    height: clamp(44px, 8.2vh, 50px);
+    height: clamp(44px, 8.2svh, 50px);
     gap: 4px;
-    padding: 0 6px;
-    font-size: 17px;
+    padding: 0 5px;
+    border-radius: 14px;
+    font-size: 16px;
   }
 
   .ratio-select .prompt-select-button {
-    grid-template-columns: 28px minmax(0, 1fr) 16px;
+    grid-template-columns: 24px minmax(0, 1fr) 14px;
     width: 100%;
     min-width: 0;
   }
 
   .style-select .prompt-select-button,
   .quality-select .prompt-select-button {
-    grid-template-columns: minmax(0, 1fr) 16px;
+    grid-template-columns: minmax(0, 1fr) 14px;
     width: 100%;
     min-width: 0;
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .style-glyph {
@@ -1458,8 +1519,11 @@ textarea:focus {
   }
 
   .sticky-action {
-    min-height: 64px;
-    font-size: 20px;
+    min-height: clamp(56px, 10vh, 64px);
+    min-height: clamp(56px, 10svh, 64px);
+    margin-top: clamp(12px, 2.4vh, 18px);
+    margin-top: clamp(12px, 2.4svh, 18px);
+    font-size: 19px;
   }
 
   .tasks-drawer {
@@ -1542,5 +1606,130 @@ textarea:focus {
 
   .language-switcher {
     min-width: 46px;
+  }
+
+  .topbar-icon,
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+
+  .prompt-selects {
+    width: min(100%, 232px);
+    grid-template-columns: 58px minmax(98px, 1fr) 58px;
+  }
+
+  .prompt-select-button {
+    font-size: 15px;
+  }
+
+  .style-select .prompt-select-button,
+  .quality-select .prompt-select-button {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 560px) and (max-height: 680px) {
+  .login-panel {
+    padding-top: 24px;
+    padding-bottom: 22px;
+  }
+
+  .login-language-switcher {
+    top: 8px;
+  }
+
+  .login-logo {
+    width: clamp(70px, 14vh, 92px);
+    width: clamp(70px, 14svh, 92px);
+    height: clamp(70px, 14vh, 92px);
+    height: clamp(70px, 14svh, 92px);
+    margin-bottom: 14px;
+  }
+
+  .login-copy {
+    margin-bottom: 16px;
+  }
+
+  .login-panel h1 {
+    font-size: clamp(30px, 9vw, 34px);
+  }
+
+  .login-copy p {
+    margin-top: 6px;
+    font-size: 15px;
+  }
+
+  .login-panel input {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .login-panel .primary-button {
+    min-height: 50px;
+    margin-top: 18px;
+    font-size: 18px;
+  }
+
+  .form-error {
+    margin-top: 12px;
+    padding-block: 10px;
+  }
+
+  .create-page {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .app-topbar {
+    min-height: 58px;
+    margin-bottom: 10px;
+    padding-block: 10px;
+  }
+
+  .brand-mark {
+    font-size: 22px;
+  }
+
+  .brand-mark img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .prompt-label-row {
+    gap: 10px;
+  }
+
+  .field > span:first-child {
+    font-size: 20px;
+  }
+
+  .reference-picker {
+    width: 46px;
+    height: 46px;
+  }
+
+  .create-form > .field {
+    gap: 10px;
+  }
+
+  .prompt-field textarea {
+    padding-top: 16px;
+    padding-bottom: 78px;
+    font-size: 17px;
+  }
+
+  .prompt-bottom-tools {
+    bottom: 9px;
+  }
+
+  .prompt-select-button {
+    height: 42px;
+  }
+
+  .sticky-action {
+    min-height: 52px;
+    font-size: 18px;
   }
 }

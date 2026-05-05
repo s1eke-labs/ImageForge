@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    target: 'es2022',
-    cssTarget: 'chrome111',
+    target: 'safari15',
+    cssTarget: 'safari15',
   },
   server: {
     proxy: {
