@@ -272,15 +272,15 @@ func thumbPath(path, name string) string {
 	if path == "" {
 		return ""
 	}
-	base := service.ExtractTaskIDFromImagePath(path)
-	if base == "" {
-		return ""
-	}
 	parts := strings.Split(path, "/")
-	if len(parts) < 3 {
-		return ""
+	for i, part := range parts {
+		if strings.HasPrefix(part, "task_") {
+			base := append([]string{}, parts[:i+1]...)
+			base = append(base, "thumbs", name)
+			return strings.Join(base, "/")
+		}
 	}
-	return strings.Join([]string{parts[0], parts[1], base, "thumbs", name}, "/")
+	return ""
 }
 
 func parseInt(value string, fallback int) int {

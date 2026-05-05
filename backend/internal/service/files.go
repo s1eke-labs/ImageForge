@@ -38,7 +38,7 @@ type ImageMeta struct {
 }
 
 func TaskImageDir(createdAt time.Time, taskID string) string {
-	return filepath.ToSlash(filepath.Join("images", createdAt.Format("2006-01"), taskID))
+	return filepath.ToSlash(filepath.Join("images", createdAt.Format("2006"), createdAt.Format("01"), createdAt.Format("02"), taskID))
 }
 
 func SaveReferenceImage(dataDir string, createdAt time.Time, taskID string, file *multipart.FileHeader) (string, error) {

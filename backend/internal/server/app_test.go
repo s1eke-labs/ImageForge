@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -137,6 +138,7 @@ func TestUserAndRunnerFlow(t *testing.T) {
 	if resultResp.Status != model.TaskStatusSucceeded || resultResp.ResultImagePath == "" {
 		t.Fatalf("unexpected result response: %#v", resultResp)
 	}
+	assertTaskImagePath(t, resultResp.ResultImagePath, createdTask.ID)
 
 	file := get(t, e, "/api/files/"+resultResp.ResultImagePath, userBearer)
 	if file.Code != http.StatusOK {
@@ -626,6 +628,9 @@ func TestTaskCreateAcceptsFourReferenceImages(t *testing.T) {
 	if filepath.Base(createdTask.ReferenceImagePaths[0]) != "ref-1.png" || filepath.Base(createdTask.ReferenceImagePaths[3]) != "ref-4.png" {
 		t.Fatalf("unexpected ordered reference names: %#v", createdTask.ReferenceImagePaths)
 	}
+	for _, path := range createdTask.ReferenceImagePaths {
+		assertTaskImagePath(t, path, createdTask.ID)
+	}
 
 	runner, err := service.CreateRunner(db, "runner-a")
 	if err != nil {
@@ -1105,6 +1110,17 @@ func decode(t *testing.T, data []byte, out any) {
 	t.Helper()
 	if err := json.Unmarshal(data, out); err != nil {
 		t.Fatalf("decode %s: %v", string(data), err)
+	}
+}
+
+func assertTaskImagePath(t *testing.T, got string, taskID string) {
+	t.Helper()
+	parts := strings.Split(got, "/")
+	if len(parts) < 5 || parts[0] != "images" || parts[4] != taskID {
+		t.Fatalf("image path = %q, want images/YYYY/MM/DD/%s/...", got, taskID)
+	}
+	if _, err := time.Parse("2006/01/02", strings.Join(parts[1:4], "/")); err != nil {
+		t.Fatalf("image path = %q, date segment should be YYYY/MM/DD: %v", got, err)
 	}
 }
 
