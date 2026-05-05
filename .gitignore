@@ -10,6 +10,9 @@ backend/data/
 backend/tmp/
 data/
 dist
+!backend/internal/frontend/dist/
+backend/internal/frontend/dist/*
+!backend/internal/frontend/dist/.gitkeep
 
 # Database
 *.db
