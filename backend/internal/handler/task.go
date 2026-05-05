@@ -55,6 +55,35 @@ func (h TaskHandler) List(c echo.Context) error {
 	})
 }
 
+func (h TaskHandler) Statuses(c echo.Context) error {
+	userID := middleware.CurrentUserID(c)
+	ids := taskStatusIDs(c.QueryParam("ids"))
+	if len(ids) == 0 {
+		return c.JSON(http.StatusOK, map[string]any{"tasks": []any{}})
+	}
+	if len(ids) > 50 {
+		return echo.NewHTTPError(http.StatusBadRequest, "up to 50 task ids are allowed")
+	}
+
+	var tasks []model.Task
+	if err := h.DB.Where("user_id = ? AND id IN ?", userID, ids).Find(&tasks).Error; err != nil {
+		return err
+	}
+	byID := make(map[string]model.Task, len(tasks))
+	for _, task := range tasks {
+		byID[task.ID] = task
+	}
+	out := make([]map[string]any, 0, len(tasks))
+	for _, id := range ids {
+		task, ok := byID[id]
+		if !ok {
+			continue
+		}
+		out = append(out, taskStatusResponse(task))
+	}
+	return c.JSON(http.StatusOK, map[string]any{"tasks": out})
+}
+
 func (h TaskHandler) Create(c echo.Context) error {
 	userID := middleware.CurrentUserID(c)
 	prompt := strings.TrimSpace(c.FormValue("prompt"))
@@ -159,6 +188,26 @@ func taskResponses(tasks []model.Task) []map[string]any {
 	return out
 }
 
+func taskStatusResponse(task model.Task) map[string]any {
+	return map[string]any{
+		"id":                  task.ID,
+		"status":              task.Status,
+		"runner_id":           task.RunnerID,
+		"result_image_path":   task.ResultImagePath,
+		"result_thumb_path":   thumbPath(task.ResultImagePath, "result.jpg"),
+		"result_width":        task.ResultWidth,
+		"result_height":       task.ResultHeight,
+		"result_size_bytes":   task.ResultSizeBytes,
+		"duration_seconds":    task.DurationSeconds,
+		"error_code":          task.ErrorCode,
+		"error_message":       task.ErrorMessage,
+		"upstream_status":     task.UpstreamStatus,
+		"upstream_updated_at": task.UpstreamUpdatedAt,
+		"claimed_at":          task.ClaimedAt,
+		"finished_at":         task.FinishedAt,
+	}
+}
+
 func taskResponse(task model.Task) map[string]any {
 	referencePaths := taskReferenceImagePaths(task)
 	referenceThumbPaths := taskReferenceThumbPaths(referencePaths)
@@ -190,6 +239,24 @@ func taskResponse(task model.Task) map[string]any {
 		"finished_at":           task.FinishedAt,
 	}
 	return resp
+}
+
+func taskStatusIDs(raw string) []string {
+	parts := strings.Split(raw, ",")
+	ids := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		id := strings.TrimSpace(part)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 func referenceImageFiles(c echo.Context) ([]*multipart.FileHeader, error) {

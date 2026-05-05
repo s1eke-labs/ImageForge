@@ -184,7 +184,6 @@ export default function CreatePage() {
   const nextReferenceIdRef = useRef(1)
   const promptToolsRef = useRef(null)
   const createTask = useTaskStore((state) => state.createTask)
-  const fetchTasks = useTaskStore((state) => state.fetchTasks)
   const currentSize = selectedOption(sizes, size)
   const currentQuality = selectedOption(qualities, quality)
   const referenceLimitReached = references.length >= maxReferenceImages
@@ -239,7 +238,6 @@ export default function CreatePage() {
       form.set('size', sizeForSelection(size, quality, finalReferences[0]?.dimensions || null, t))
       finalReferences.forEach((reference) => form.append('reference_images', reference.file))
       await createTask(form)
-      fetchTasks().catch(() => {})
       setTasksOpen(true)
     } catch (err) {
       setError(err?.message || t('error.createTask'))

@@ -38,6 +38,7 @@ func New(cfg config.Config, db *gorm.DB) *echo.Echo {
 	userAPI := api.Group("", middleware.JWTAuth(db, cfg.JWTSecret))
 	userAPI.GET("/tasks", taskHandler.List)
 	userAPI.POST("/tasks", taskHandler.Create)
+	userAPI.GET("/tasks/statuses", taskHandler.Statuses)
 	userAPI.GET("/tasks/:id", taskHandler.Get)
 	userAPI.POST("/tasks/:id/retry", taskHandler.Retry)
 	userAPI.GET("/runners", runnerHandler.List)

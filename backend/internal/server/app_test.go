@@ -787,6 +787,67 @@ func TestFailedTaskCanBeRetried(t *testing.T) {
 	}
 }
 
+func TestTaskStatusesReturnsCompactUserOwnedUpdates(t *testing.T) {
+	t.Parallel()
+	e, db, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTask(t, e, userBearer)
+	if taskResp.Code != http.StatusCreated {
+		t.Fatalf("create task status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+	var createdTask struct {
+		ID string `json:"id"`
+	}
+	decode(t, taskResp.Body.Bytes(), &createdTask)
+
+	finishedAt := time.Now().UTC().Truncate(time.Second)
+	updates := map[string]any{
+		"status":            model.TaskStatusSucceeded,
+		"result_image_path": "images/2026/05/03/" + createdTask.ID + "/output/result.png",
+		"result_width":      1024,
+		"result_height":     1024,
+		"duration_seconds":  1.25,
+		"upstream_status":   "completed",
+		"finished_at":       &finishedAt,
+		"error_code":        "",
+		"error_message":     "",
+	}
+	if err := db.Model(&model.Task{}).Where("id = ?", createdTask.ID).Updates(updates).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	otherUser := model.User{Username: "other", PasswordHash: "hash"}
+	if err := db.Create(&otherUser).Error; err != nil {
+		t.Fatal(err)
+	}
+	otherTask := model.Task{ID: "task_other_status", UserID: otherUser.ID, Prompt: "hidden", Size: "1024x1024", Quality: "auto", Status: model.TaskStatusPending}
+	if err := db.Create(&otherTask).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	statuses := get(t, e, "/api/tasks/statuses?ids=missing,"+createdTask.ID+","+otherTask.ID+","+createdTask.ID, userBearer)
+	if statuses.Code != http.StatusOK {
+		t.Fatalf("statuses status = %d, body = %s", statuses.Code, statuses.Body.String())
+	}
+	var statusResp struct {
+		Tasks []map[string]any `json:"tasks"`
+	}
+	decode(t, statuses.Body.Bytes(), &statusResp)
+	if len(statusResp.Tasks) != 1 {
+		t.Fatalf("expected one user-owned status update, got %#v", statusResp)
+	}
+	task := statusResp.Tasks[0]
+	if task["id"] != createdTask.ID || task["status"] != model.TaskStatusSucceeded {
+		t.Fatalf("unexpected status payload: %#v", task)
+	}
+	if _, ok := task["prompt"]; ok {
+		t.Fatalf("status payload should not include static prompt field: %#v", task)
+	}
+	if task["result_thumb_path"] == "" || task["result_width"].(float64) != 1024 {
+		t.Fatalf("status payload missing result fields: %#v", task)
+	}
+}
+
 func TestTaskCreateIgnoresQualityField(t *testing.T) {
 	t.Parallel()
 	e, _, userBearer := setupAuthenticatedUser(t)

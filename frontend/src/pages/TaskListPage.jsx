@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { AlertCircle, CheckCircle2, LoaderCircle, X } from 'lucide-react'
 import TaskCard from '../components/TaskCard.jsx'
 import { usePolling } from '../hooks/usePolling.js'
@@ -10,15 +10,19 @@ export default function TaskListPage({ open = true, onClose }) {
   const tasks = useTaskStore((state) => state.tasks)
   const loading = useTaskStore((state) => state.loading)
   const fetchTasks = useTaskStore((state) => state.fetchTasks)
+  const fetchTaskStatuses = useTaskStore((state) => state.fetchTaskStatuses)
   const refresh = useCallback(() => {
     fetchTasks().catch(() => {})
   }, [fetchTasks])
-  const hasActiveTasks = tasks.some((task) => task.status === 'pending' || task.status === 'claimed')
+  const activeTaskIds = useMemo(() => tasks.filter((task) => task.status === 'pending' || task.status === 'claimed').map((task) => task.id), [tasks])
+  const refreshActiveStatuses = useCallback(() => {
+    fetchTaskStatuses(activeTaskIds).catch(() => {})
+  }, [activeTaskIds, fetchTaskStatuses])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
-  usePolling(refresh, 5000, hasActiveTasks)
+    if (open) refresh()
+  }, [open, refresh])
+  usePolling(refreshActiveStatuses, 5000, open && activeTaskIds.length > 0)
 
   const activeTasks = tasks.filter((task) => task.status === 'pending' || task.status === 'claimed')
   const completedTasks = tasks.filter((task) => task.status === 'succeeded')
