@@ -39,29 +39,30 @@ type Runner struct {
 }
 
 type Task struct {
-	ID                 string     `gorm:"primaryKey" json:"id"`
-	UserID             uint       `gorm:"not null;index" json:"user_id"`
-	User               User       `gorm:"constraint:OnDelete:CASCADE" json:"-"`
-	Prompt             string     `gorm:"not null" json:"prompt"`
-	Size               string     `gorm:"not null;default:1024x1024" json:"size"`
-	Quality            string     `gorm:"not null;default:auto" json:"quality"`
-	ReferenceImagePath string     `json:"reference_image_path,omitempty"`
-	Status             string     `gorm:"not null;default:pending;index" json:"status"`
-	RunnerID           *string    `gorm:"index" json:"runner_id,omitempty"`
-	ResultImagePath    string     `json:"result_image_path,omitempty"`
-	ResultWidth        int        `json:"result_width,omitempty"`
-	ResultHeight       int        `json:"result_height,omitempty"`
-	ResultSizeBytes    int64      `json:"result_size_bytes,omitempty"`
-	DurationSeconds    float64    `json:"duration_seconds,omitempty"`
-	ErrorCode          string     `json:"error_code,omitempty"`
-	ErrorMessage       string     `json:"error_message,omitempty"`
-	UpstreamResponseID string     `json:"upstream_response_id,omitempty"`
-	SubmissionID       string     `gorm:"index" json:"submission_id,omitempty"`
-	UpstreamStatus     string     `json:"upstream_status,omitempty"`
-	UpstreamUpdatedAt  *time.Time `json:"upstream_updated_at,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	ClaimedAt          *time.Time `json:"claimed_at,omitempty"`
-	FinishedAt         *time.Time `json:"finished_at,omitempty"`
+	ID                  string     `gorm:"primaryKey" json:"id"`
+	UserID              uint       `gorm:"not null;index" json:"user_id"`
+	User                User       `gorm:"constraint:OnDelete:CASCADE" json:"-"`
+	Prompt              string     `gorm:"not null" json:"prompt"`
+	Size                string     `gorm:"not null;default:1024x1024" json:"size"`
+	Quality             string     `gorm:"not null;default:auto" json:"quality"`
+	ReferenceImagePath  string     `json:"reference_image_path,omitempty"`
+	ReferenceImagePaths string     `gorm:"type:text" json:"-"`
+	Status              string     `gorm:"not null;default:pending;index" json:"status"`
+	RunnerID            *string    `gorm:"index" json:"runner_id,omitempty"`
+	ResultImagePath     string     `json:"result_image_path,omitempty"`
+	ResultWidth         int        `json:"result_width,omitempty"`
+	ResultHeight        int        `json:"result_height,omitempty"`
+	ResultSizeBytes     int64      `json:"result_size_bytes,omitempty"`
+	DurationSeconds     float64    `json:"duration_seconds,omitempty"`
+	ErrorCode           string     `json:"error_code,omitempty"`
+	ErrorMessage        string     `json:"error_message,omitempty"`
+	UpstreamResponseID  string     `json:"upstream_response_id,omitempty"`
+	SubmissionID        string     `gorm:"index" json:"submission_id,omitempty"`
+	UpstreamStatus      string     `json:"upstream_status,omitempty"`
+	UpstreamUpdatedAt   *time.Time `json:"upstream_updated_at,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	ClaimedAt           *time.Time `json:"claimed_at,omitempty"`
+	FinishedAt          *time.Time `json:"finished_at,omitempty"`
 }
 
 func (r Runner) EffectiveStatus(now time.Time) string {

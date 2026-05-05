@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 )
 
 const MaxReferenceImageBytes = 10 << 20
+const MaxReferenceImages = 4
 const MaxResultImageBytes = 64 << 20
 
 var allowedImageExt = map[string]bool{
@@ -40,6 +42,10 @@ func TaskImageDir(createdAt time.Time, taskID string) string {
 }
 
 func SaveReferenceImage(dataDir string, createdAt time.Time, taskID string, file *multipart.FileHeader) (string, error) {
+	return SaveReferenceImageAt(dataDir, createdAt, taskID, 0, file)
+}
+
+func SaveReferenceImageAt(dataDir string, createdAt time.Time, taskID string, index int, file *multipart.FileHeader) (string, error) {
 	if file.Size > MaxReferenceImageBytes {
 		return "", errors.New("reference image exceeds 10MB")
 	}
@@ -63,7 +69,8 @@ func SaveReferenceImage(dataDir string, createdAt time.Time, taskID string, file
 	if err != nil {
 		return "", errors.New("reference image is not a supported image")
 	}
-	rel := filepath.ToSlash(filepath.Join(TaskImageDir(createdAt, taskID), "refs", "ref"+ext))
+	name := referenceImageName(index, ext)
+	rel := filepath.ToSlash(filepath.Join(TaskImageDir(createdAt, taskID), "refs", name))
 	abs := filepath.Join(dataDir, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return "", err
@@ -71,10 +78,14 @@ func SaveReferenceImage(dataDir string, createdAt time.Time, taskID string, file
 	if err := os.WriteFile(abs, data, 0o644); err != nil {
 		return "", err
 	}
-	return rel, saveThumb(dataDir, createdAt, taskID, "ref.jpg", img)
+	return rel, saveThumb(dataDir, createdAt, taskID, thumbNameForReference(name), img)
 }
 
 func CopyReferenceImage(dataDir string, sourceRelPath string, createdAt time.Time, taskID string) (string, error) {
+	return CopyReferenceImageAt(dataDir, sourceRelPath, createdAt, taskID, 0)
+}
+
+func CopyReferenceImageAt(dataDir string, sourceRelPath string, createdAt time.Time, taskID string, index int) (string, error) {
 	if sourceRelPath == "" {
 		return "", nil
 	}
@@ -97,7 +108,8 @@ func CopyReferenceImage(dataDir string, sourceRelPath string, createdAt time.Tim
 	if err != nil {
 		return "", errors.New("reference image is not a supported image")
 	}
-	rel := filepath.ToSlash(filepath.Join(TaskImageDir(createdAt, taskID), "refs", "ref"+ext))
+	name := referenceImageName(index, ext)
+	rel := filepath.ToSlash(filepath.Join(TaskImageDir(createdAt, taskID), "refs", name))
 	abs := filepath.Join(dataDir, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return "", err
@@ -105,7 +117,16 @@ func CopyReferenceImage(dataDir string, sourceRelPath string, createdAt time.Tim
 	if err := os.WriteFile(abs, data, 0o644); err != nil {
 		return "", err
 	}
-	return rel, saveThumb(dataDir, createdAt, taskID, "ref.jpg", img)
+	return rel, saveThumb(dataDir, createdAt, taskID, thumbNameForReference(name), img)
+}
+
+func referenceImageName(index int, ext string) string {
+	return "ref-" + strconv.Itoa(index+1) + ext
+}
+
+func thumbNameForReference(fileName string) string {
+	ext := filepath.Ext(fileName)
+	return strings.TrimSuffix(fileName, ext) + ".jpg"
 }
 
 func SaveResultFile(dataDir string, createdAt time.Time, taskID string, file *multipart.FileHeader) (ImageMeta, error) {

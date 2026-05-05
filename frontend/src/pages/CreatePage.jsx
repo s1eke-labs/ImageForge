@@ -22,6 +22,8 @@ const qualities = [
 ]
 const minPixels = 655360
 const maxPixels = 8294400
+const maxReferenceImages = 4
+const maxReferenceImageBytes = 10 * 1024 * 1024
 
 function selectedOption(options, value) {
   return options.find((item) => item.value === value || item.id === value) || options[0]
@@ -82,13 +84,17 @@ function readImageDimensions(file, t) {
   })
 }
 
-function imageFileFromClipboard(event) {
+function imageFilesFromClipboard(event) {
   const items = Array.from(event.clipboardData?.items || [])
-  const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
-  const file = imageItem?.getAsFile()
-  if (!file) return null
-  const extension = file.type.split('/')[1] || 'png'
-  return new window.File([file], file.name || `pasted-reference.${extension}`, { type: file.type })
+  return items
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item, index) => {
+      const file = item.getAsFile()
+      if (!file) return null
+      const extension = file.type.split('/')[1] || 'png'
+      return new window.File([file], file.name || `pasted-reference-${index + 1}.${extension}`, { type: file.type })
+    })
+    .filter(Boolean)
 }
 
 function normalizeStyles(data, t) {
@@ -150,14 +156,24 @@ function StylePreview({ option }) {
   return <StyleGlyph />
 }
 
+function ReferencePreview({ file }) {
+  const [url, setUrl] = useState('')
+
+  useEffect(() => {
+    const nextUrl = URL.createObjectURL(file)
+    setUrl(nextUrl)
+    return () => URL.revokeObjectURL(nextUrl)
+  }, [file])
+
+  return url ? <img src={url} alt="" /> : null
+}
+
 export default function CreatePage() {
   const { t } = useI18n()
   const [prompt, setPrompt] = useState('')
   const [size, setSize] = useState('1:1')
   const [quality, setQuality] = useState('low')
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState('')
-  const [referenceDimensions, setReferenceDimensions] = useState(null)
+  const [references, setReferences] = useState([])
   const [styles, setStyles] = useState([])
   const [selectedStyleId, setSelectedStyleId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -165,22 +181,13 @@ export default function CreatePage() {
   const [tasksOpen, setTasksOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState('')
   const fileInputRef = useRef(null)
-  const fileVersionRef = useRef(0)
+  const nextReferenceIdRef = useRef(1)
   const promptToolsRef = useRef(null)
   const createTask = useTaskStore((state) => state.createTask)
   const fetchTasks = useTaskStore((state) => state.fetchTasks)
   const currentSize = selectedOption(sizes, size)
   const currentQuality = selectedOption(qualities, quality)
-
-  useEffect(() => {
-    if (!file) {
-      setPreview('')
-      return undefined
-    }
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+  const referenceLimitReached = references.length >= maxReferenceImages
 
   useEffect(() => {
     let active = true
@@ -213,12 +220,24 @@ export default function CreatePage() {
     setLoading(true)
     setError('')
     try {
-      const finalDimensions = file && !referenceDimensions ? await readImageDimensions(file, t) : referenceDimensions
-      if (file && !referenceDimensions) setReferenceDimensions(finalDimensions)
+      const finalReferences = await Promise.all(
+        references.map(async (reference) => {
+          if (reference.dimensions) return reference
+          return { ...reference, dimensions: await readImageDimensions(reference.file, t) }
+        }),
+      )
+      if (finalReferences.some((reference, index) => reference.dimensions !== references[index]?.dimensions)) {
+        setReferences((current) =>
+          current.map((reference) => {
+            const resolved = finalReferences.find((item) => item.id === reference.id)
+            return resolved ? { ...reference, dimensions: resolved.dimensions } : reference
+          }),
+        )
+      }
       const form = new FormData()
       form.set('prompt', prompt.trim())
-      form.set('size', sizeForSelection(size, quality, finalDimensions, t))
-      if (file) form.set('reference_image', file)
+      form.set('size', sizeForSelection(size, quality, finalReferences[0]?.dimensions || null, t))
+      finalReferences.forEach((reference) => form.append('reference_images', reference.file))
       await createTask(form)
       fetchTasks().catch(() => {})
       setTasksOpen(true)
@@ -229,39 +248,61 @@ export default function CreatePage() {
     }
   }
 
-  const setReferenceFile = (selected) => {
-    const version = fileVersionRef.current + 1
-    fileVersionRef.current = version
-    setFile(selected)
-    setReferenceDimensions(null)
-    setError('')
-    if (selected) {
-      readImageDimensions(selected, t)
+  const addReferenceFiles = (selectedFiles) => {
+    const selected = Array.from(selectedFiles || []).filter(Boolean)
+    if (selected.length === 0) return
+    const accepted = []
+    let nextError = ''
+    for (const selectedFile of selected) {
+      if (selectedFile.size > maxReferenceImageBytes) {
+        nextError ||= t('error.referenceTooLarge')
+        continue
+      }
+      if (references.length + accepted.length >= maxReferenceImages) {
+        nextError ||= t('error.referenceLimit')
+        break
+      }
+      accepted.push(selectedFile)
+    }
+    if (accepted.length === 0) {
+      setError(nextError)
+      return
+    }
+    const newReferences = accepted.map((selectedFile) => ({
+      id: `reference-${nextReferenceIdRef.current++}`,
+      file: selectedFile,
+      dimensions: null,
+    }))
+    setReferences((current) => [...current, ...newReferences])
+    setError(nextError)
+    newReferences.forEach((reference) => {
+      readImageDimensions(reference.file, t)
         .then((dimensions) => {
-          if (fileVersionRef.current === version) setReferenceDimensions(dimensions)
+          setReferences((current) =>
+            current.map((item) => (item.id === reference.id ? { ...item, dimensions } : item)),
+          )
         })
         .catch((err) => {
-          if (fileVersionRef.current === version) setError(err?.message || t('error.readReferenceDimensions'))
+          setError(err?.message || t('error.readReferenceDimensions'))
         })
-    }
+    })
   }
 
   const selectReferenceImage = (event) => {
-    setReferenceFile(event.target.files?.[0] || null)
+    addReferenceFiles(event.target.files)
     event.target.value = ''
   }
 
   const pasteReferenceImage = (event) => {
-    const pasted = imageFileFromClipboard(event)
-    if (!pasted) return
+    const pasted = imageFilesFromClipboard(event)
+    if (pasted.length === 0) return
     event.preventDefault()
-    setReferenceFile(pasted)
+    addReferenceFiles(pasted)
   }
 
-  const clearReferenceImage = () => {
-    fileVersionRef.current += 1
-    setFile(null)
-    setReferenceDimensions(null)
+  const removeReferenceImage = (id) => {
+    setReferences((current) => current.filter((reference) => reference.id !== id))
+    setError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -284,20 +325,35 @@ export default function CreatePage() {
           <span className="prompt-label-row">
             <label htmlFor="prompt-input">{t('create.promptLabel')}</label>
             <span className="reference-control">
-              <span className={`reference-picker ${preview ? 'has-preview' : ''}`} aria-label={t('create.referenceUploadAria')}>
-                {preview ? <img src={preview} alt="" /> : <Plus size={28} />}
+              {references.length > 0 && (
+                <span className="reference-stack" aria-label={t('create.referenceListAria')}>
+                  {references.map((reference, index) => (
+                    <span key={reference.id} className="reference-card" style={{ '--reference-index': index }}>
+                      <ReferencePreview file={reference.file} />
+                      <button type="button" className="reference-remove" onClick={() => removeReferenceImage(reference.id)} aria-label={t('create.referenceRemoveAria')}>
+                        <X size={13} />
+                      </button>
+                    </span>
+                  ))}
+                </span>
+              )}
+              <span
+                className={`reference-picker ${referenceLimitReached ? 'disabled' : ''}`}
+                aria-label={t('create.referenceUploadAria')}
+                onClick={() => {
+                  if (referenceLimitReached) setError(t('error.referenceLimit'))
+                }}
+              >
+                <Plus size={28} />
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  disabled={referenceLimitReached}
                   onChange={selectReferenceImage}
                 />
               </span>
-              {preview && (
-                <button type="button" className="reference-clear" onClick={clearReferenceImage} aria-label={t('create.referenceRemoveAria')}>
-                  <X size={16} />
-                </button>
-              )}
             </span>
           </span>
           <span className="prompt-field">

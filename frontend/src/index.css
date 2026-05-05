@@ -479,6 +479,8 @@ textarea:focus {
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .reference-picker {
@@ -497,17 +499,6 @@ textarea:focus {
   box-shadow: var(--terra-shadow);
 }
 
-.reference-picker.has-preview {
-  border-color: rgb(74 124 89 / 28%);
-  background: var(--terra-surface);
-}
-
-.reference-picker img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .reference-picker input {
   position: absolute;
   inset: 0;
@@ -515,13 +506,60 @@ textarea:focus {
   cursor: pointer;
 }
 
-.reference-clear {
-  position: absolute;
-  top: -8px;
-  right: -8px;
+.reference-picker.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.reference-picker input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.reference-stack {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: min-content;
+  align-items: center;
+  padding-left: 2px;
+}
+
+.reference-card {
+  position: relative;
+  display: inline-flex;
+  width: 52px;
+  height: 58px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  margin-left: -18px;
+  border: 2px solid var(--terra-surface);
+  border-radius: 9px;
+  background: var(--terra-surface);
+  box-shadow: 0 9px 20px rgb(46 50 48 / 14%);
+  transform: translateY(calc(var(--reference-index) * -1px)) rotate(calc((var(--reference-index) - 1.5) * 4deg));
+  z-index: calc(10 + var(--reference-index));
+}
+
+.reference-card:first-child {
+  margin-left: 0;
+}
+
+.reference-card img {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.reference-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
   border: 1px solid rgb(74 124 89 / 18%);
@@ -1412,6 +1450,12 @@ textarea:focus {
     border-radius: 16px;
   }
 
+  .reference-card {
+    width: clamp(43px, 11vw, 52px);
+    height: clamp(48px, 12vw, 58px);
+    margin-left: -16px;
+  }
+
   .prompt-field textarea {
     min-height: 0;
     padding: clamp(18px, 4vh, 24px) 16px clamp(88px, 17vh, 104px);
@@ -1708,6 +1752,12 @@ textarea:focus {
   .reference-picker {
     width: 46px;
     height: 46px;
+  }
+
+  .reference-card {
+    width: 40px;
+    height: 46px;
+    margin-left: -14px;
   }
 
   .create-form > .field {

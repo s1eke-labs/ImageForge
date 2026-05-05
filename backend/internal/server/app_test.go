@@ -109,7 +109,7 @@ func TestUserAndRunnerFlow(t *testing.T) {
 		t.Fatalf("unexpected claim response: %#v", claimResp)
 	}
 	references := claimResp.Tasks[0].Payload.ReferenceImages
-	if len(references) != 1 || references[0].B64JSON != tinyPNGBase64 || references[0].FileName != "ref.png" || references[0].MIMEType != "image/png" || references[0].URL != "" {
+	if len(references) != 1 || references[0].B64JSON != tinyPNGBase64 || references[0].FileName != "ref-1.png" || references[0].MIMEType != "image/png" || references[0].URL != "" {
 		t.Fatalf("runner reference image should include b64_json, file_name, and mime_type only: %#v", references)
 	}
 	var rawClaim map[string][]map[string]any
@@ -601,6 +601,131 @@ func TestClaimedTaskFailsAfterGenerationTimeout(t *testing.T) {
 	}
 }
 
+func TestTaskCreateAcceptsFourReferenceImages(t *testing.T) {
+	t.Parallel()
+	e, db, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskWithReferenceImages(t, e, userBearer, 4)
+	if taskResp.Code != http.StatusCreated {
+		t.Fatalf("create task with references status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+	var createdTask struct {
+		ID                  string   `json:"id"`
+		ReferenceImagePath  string   `json:"reference_image_path"`
+		ReferenceThumbPath  string   `json:"reference_thumb_path"`
+		ReferenceImagePaths []string `json:"reference_image_paths"`
+		ReferenceThumbPaths []string `json:"reference_thumb_paths"`
+	}
+	decode(t, taskResp.Body.Bytes(), &createdTask)
+	if len(createdTask.ReferenceImagePaths) != 4 || len(createdTask.ReferenceThumbPaths) != 4 {
+		t.Fatalf("unexpected reference paths: %#v", createdTask)
+	}
+	if createdTask.ReferenceImagePath != createdTask.ReferenceImagePaths[0] || createdTask.ReferenceThumbPath != createdTask.ReferenceThumbPaths[0] {
+		t.Fatalf("legacy reference fields should mirror first reference: %#v", createdTask)
+	}
+	if filepath.Base(createdTask.ReferenceImagePaths[0]) != "ref-1.png" || filepath.Base(createdTask.ReferenceImagePaths[3]) != "ref-4.png" {
+		t.Fatalf("unexpected ordered reference names: %#v", createdTask.ReferenceImagePaths)
+	}
+
+	runner, err := service.CreateRunner(db, "runner-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runnerBearer := "Bearer " + runner.Token
+	register := postJSON(t, e, "/api/runner/runners/register", map[string]any{"name": "runner-a", "version": "0.1.0"}, runnerBearer)
+	if register.Code != http.StatusOK {
+		t.Fatalf("runner register status = %d, body = %s", register.Code, register.Body.String())
+	}
+	claim := postJSON(t, e, "/api/runner/runners/"+runner.RunnerID+"/tasks/claim", map[string]any{"limit": 1}, runnerBearer)
+	if claim.Code != http.StatusOK {
+		t.Fatalf("claim status = %d, body = %s", claim.Code, claim.Body.String())
+	}
+	var claimResp struct {
+		Tasks []struct {
+			Payload struct {
+				ReferenceImages []struct {
+					B64JSON  string `json:"b64_json"`
+					FileName string `json:"file_name"`
+					MIMEType string `json:"mime_type"`
+				} `json:"reference_images"`
+			} `json:"payload"`
+		} `json:"tasks"`
+	}
+	decode(t, claim.Body.Bytes(), &claimResp)
+	references := claimResp.Tasks[0].Payload.ReferenceImages
+	if len(references) != 4 || references[0].FileName != "ref-1.png" || references[3].FileName != "ref-4.png" {
+		t.Fatalf("unexpected runner references: %#v", references)
+	}
+	for _, reference := range references {
+		if reference.B64JSON != tinyPNGBase64 || reference.MIMEType != "image/png" {
+			t.Fatalf("unexpected reference payload: %#v", reference)
+		}
+	}
+}
+
+func TestTaskCreateRejectsTooManyReferenceImages(t *testing.T) {
+	t.Parallel()
+	e, _, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskWithReferenceImages(t, e, userBearer, 5)
+	if taskResp.Code != http.StatusBadRequest || !bytes.Contains(taskResp.Body.Bytes(), []byte("up to 4 reference images")) {
+		t.Fatalf("create task with too many references status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+}
+
+func TestTaskCreateRejectsOversizedReferenceImage(t *testing.T) {
+	t.Parallel()
+	e, _, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskWithReferencePayloads(t, e, userBearer, [][]byte{bytes.Repeat([]byte{0}, service.MaxReferenceImageBytes+1)}, []string{"large.png"})
+	if taskResp.Code != http.StatusBadRequest || !bytes.Contains(taskResp.Body.Bytes(), []byte("reference image exceeds 10MB")) {
+		t.Fatalf("create task with oversized reference status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+}
+
+func TestTaskCreateRejectsUnsupportedReferenceImage(t *testing.T) {
+	t.Parallel()
+	e, _, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskWithReferencePayloads(t, e, userBearer, [][]byte{[]byte("not an image")}, []string{"broken.png"})
+	if taskResp.Code != http.StatusBadRequest || !bytes.Contains(taskResp.Body.Bytes(), []byte("reference image is not a supported image")) {
+		t.Fatalf("create task with unsupported reference status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+}
+
+func TestFailedTaskRetryCopiesReferenceImages(t *testing.T) {
+	t.Parallel()
+	e, db, userBearer := setupAuthenticatedUser(t)
+
+	taskResp := postMultipartTaskWithReferenceImages(t, e, userBearer, 2)
+	if taskResp.Code != http.StatusCreated {
+		t.Fatalf("create task with references status = %d, body = %s", taskResp.Code, taskResp.Body.String())
+	}
+	var createdTask struct {
+		ID string `json:"id"`
+	}
+	decode(t, taskResp.Body.Bytes(), &createdTask)
+	if err := db.Model(&model.Task{}).Where("id = ?", createdTask.ID).Update("status", model.TaskStatusFailed).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	retry := postJSON(t, e, "/api/tasks/"+createdTask.ID+"/retry", map[string]any{}, userBearer)
+	if retry.Code != http.StatusCreated {
+		t.Fatalf("retry status = %d, body = %s", retry.Code, retry.Body.String())
+	}
+	var retryResp struct {
+		ID                  string   `json:"id"`
+		ReferenceImagePaths []string `json:"reference_image_paths"`
+	}
+	decode(t, retry.Body.Bytes(), &retryResp)
+	if retryResp.ID == "" || retryResp.ID == createdTask.ID || len(retryResp.ReferenceImagePaths) != 2 {
+		t.Fatalf("unexpected retry references: %#v", retryResp)
+	}
+	if filepath.Base(retryResp.ReferenceImagePaths[0]) != "ref-1.png" || filepath.Base(retryResp.ReferenceImagePaths[1]) != "ref-2.png" {
+		t.Fatalf("unexpected retry reference names: %#v", retryResp.ReferenceImagePaths)
+	}
+}
+
 func TestFailedTaskCanBeRetried(t *testing.T) {
 	t.Parallel()
 	ctx := setupClaimedTask(t)
@@ -843,6 +968,26 @@ func postMultipartTaskWithReference(t *testing.T, e http.Handler, bearer string)
 	return postMultipartTaskWithOptionalReference(t, e, bearer, true)
 }
 
+func postMultipartTaskWithReferenceImages(t *testing.T, e http.Handler, bearer string, count int) *httptest.ResponseRecorder {
+	t.Helper()
+	images := make([][]byte, 0, count)
+	names := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		images = append(images, tinyPNGBytes(t))
+		names = append(names, "reference.png")
+	}
+	return postMultipartTaskWithReferencePayloads(t, e, bearer, images, names)
+}
+
+func postMultipartTaskWithReferencePayloads(t *testing.T, e http.Handler, bearer string, images [][]byte, names []string) *httptest.ResponseRecorder {
+	t.Helper()
+	return postMultipartTaskFieldsAndReferences(t, e, bearer, map[string]string{
+		"prompt":  "一张赛博朋克城市海报",
+		"size":    "1024x1024",
+		"quality": "auto",
+	}, "reference_images", images, names)
+}
+
 func postMultipartTaskWithOptionalReference(t *testing.T, e http.Handler, bearer string, includeReference bool) *httptest.ResponseRecorder {
 	t.Helper()
 	return postMultipartTaskFields(t, e, bearer, map[string]string{
@@ -854,6 +999,17 @@ func postMultipartTaskWithOptionalReference(t *testing.T, e http.Handler, bearer
 
 func postMultipartTaskFields(t *testing.T, e http.Handler, bearer string, fields map[string]string, includeReference bool) *httptest.ResponseRecorder {
 	t.Helper()
+	var images [][]byte
+	var names []string
+	if includeReference {
+		images = [][]byte{tinyPNGBytes(t)}
+		names = []string{"reference.png"}
+	}
+	return postMultipartTaskFieldsAndReferences(t, e, bearer, fields, "reference_image", images, names)
+}
+
+func postMultipartTaskFieldsAndReferences(t *testing.T, e http.Handler, bearer string, fields map[string]string, fieldName string, images [][]byte, names []string) *httptest.ResponseRecorder {
+	t.Helper()
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 	for key, value := range fields {
@@ -861,12 +1017,16 @@ func postMultipartTaskFields(t *testing.T, e http.Handler, bearer string, fields
 			t.Fatal(err)
 		}
 	}
-	if includeReference {
-		part, err := writer.CreateFormFile("reference_image", "reference.png")
+	for i, image := range images {
+		name := "reference.png"
+		if i < len(names) && names[i] != "" {
+			name = names[i]
+		}
+		part, err := writer.CreateFormFile(fieldName, name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := part.Write(tinyPNGBytes(t)); err != nil {
+		if _, err := part.Write(image); err != nil {
 			t.Fatal(err)
 		}
 	}

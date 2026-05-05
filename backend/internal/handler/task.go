@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -78,16 +81,19 @@ func (h TaskHandler) Create(c echo.Context) error {
 		Status:    model.TaskStatusPending,
 		CreatedAt: time.Now(),
 	}
-	file, err := c.FormFile("reference_image")
-	if err == nil && file != nil {
-		path, saveErr := service.SaveReferenceImage(h.DataDir, task.CreatedAt, task.ID, file)
+	files, err := referenceImageFiles(c)
+	if err != nil {
+		return err
+	}
+	paths := make([]string, 0, len(files))
+	for i, file := range files {
+		path, saveErr := service.SaveReferenceImageAt(h.DataDir, task.CreatedAt, task.ID, i, file)
 		if saveErr != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, saveErr.Error())
 		}
-		task.ReferenceImagePath = path
-	} else if err != nil && err != http.ErrMissingFile {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid reference image")
+		paths = append(paths, path)
 	}
+	setTaskReferenceImages(&task, paths)
 	if err := h.DB.Create(&task).Error; err != nil {
 		return err
 	}
@@ -124,13 +130,16 @@ func (h TaskHandler) Retry(c echo.Context) error {
 		Status:    model.TaskStatusPending,
 		CreatedAt: now,
 	}
-	if source.ReferenceImagePath != "" {
-		path, err := service.CopyReferenceImage(h.DataDir, source.ReferenceImagePath, retry.CreatedAt, retry.ID)
+	sourcePaths := taskReferenceImagePaths(source)
+	paths := make([]string, 0, len(sourcePaths))
+	for i, sourcePath := range sourcePaths {
+		path, err := service.CopyReferenceImageAt(h.DataDir, sourcePath, retry.CreatedAt, retry.ID, i)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-		retry.ReferenceImagePath = path
+		paths = append(paths, path)
 	}
+	setTaskReferenceImages(&retry, paths)
 	if err := h.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&retry).Error; err != nil {
 			return err
@@ -151,32 +160,112 @@ func taskResponses(tasks []model.Task) []map[string]any {
 }
 
 func taskResponse(task model.Task) map[string]any {
+	referencePaths := taskReferenceImagePaths(task)
+	referenceThumbPaths := taskReferenceThumbPaths(referencePaths)
 	resp := map[string]any{
-		"id":                   task.ID,
-		"prompt":               task.Prompt,
-		"size":                 task.Size,
-		"quality":              task.Quality,
-		"status":               task.Status,
-		"reference_image_path": task.ReferenceImagePath,
-		"reference_thumb_path": thumbPath(task.ReferenceImagePath, "ref.jpg"),
-		"runner_id":            task.RunnerID,
-		"result_image_path":    task.ResultImagePath,
-		"result_thumb_path":    thumbPath(task.ResultImagePath, "result.jpg"),
-		"result_width":         task.ResultWidth,
-		"result_height":        task.ResultHeight,
-		"result_size_bytes":    task.ResultSizeBytes,
-		"duration_seconds":     task.DurationSeconds,
-		"error_code":           task.ErrorCode,
-		"error_message":        task.ErrorMessage,
-		"upstream_response_id": task.UpstreamResponseID,
-		"submission_id":        task.SubmissionID,
-		"upstream_status":      task.UpstreamStatus,
-		"upstream_updated_at":  task.UpstreamUpdatedAt,
-		"created_at":           task.CreatedAt,
-		"claimed_at":           task.ClaimedAt,
-		"finished_at":          task.FinishedAt,
+		"id":                    task.ID,
+		"prompt":                task.Prompt,
+		"size":                  task.Size,
+		"quality":               task.Quality,
+		"status":                task.Status,
+		"reference_image_path":  firstString(referencePaths),
+		"reference_thumb_path":  firstString(referenceThumbPaths),
+		"reference_image_paths": referencePaths,
+		"reference_thumb_paths": referenceThumbPaths,
+		"runner_id":             task.RunnerID,
+		"result_image_path":     task.ResultImagePath,
+		"result_thumb_path":     thumbPath(task.ResultImagePath, "result.jpg"),
+		"result_width":          task.ResultWidth,
+		"result_height":         task.ResultHeight,
+		"result_size_bytes":     task.ResultSizeBytes,
+		"duration_seconds":      task.DurationSeconds,
+		"error_code":            task.ErrorCode,
+		"error_message":         task.ErrorMessage,
+		"upstream_response_id":  task.UpstreamResponseID,
+		"submission_id":         task.SubmissionID,
+		"upstream_status":       task.UpstreamStatus,
+		"upstream_updated_at":   task.UpstreamUpdatedAt,
+		"created_at":            task.CreatedAt,
+		"claimed_at":            task.ClaimedAt,
+		"finished_at":           task.FinishedAt,
 	}
 	return resp
+}
+
+func referenceImageFiles(c echo.Context) ([]*multipart.FileHeader, error) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return nil, echo.NewHTTPError(http.StatusBadRequest, "invalid reference image")
+	}
+	files := make([]*multipart.FileHeader, 0, service.MaxReferenceImages)
+	files = append(files, form.File["reference_images"]...)
+	files = append(files, form.File["reference_image"]...)
+	if len(files) > service.MaxReferenceImages {
+		return nil, echo.NewHTTPError(http.StatusBadRequest, "up to 4 reference images are allowed")
+	}
+	return files, nil
+}
+
+func setTaskReferenceImages(task *model.Task, paths []string) {
+	task.ReferenceImagePath = firstString(paths)
+	task.ReferenceImagePaths = ""
+	if len(paths) == 0 {
+		return
+	}
+	data, err := json.Marshal(paths)
+	if err == nil {
+		task.ReferenceImagePaths = string(data)
+	}
+}
+
+func taskReferenceImagePaths(task model.Task) []string {
+	var paths []string
+	if task.ReferenceImagePaths != "" && json.Unmarshal([]byte(task.ReferenceImagePaths), &paths) == nil {
+		return compactStrings(paths)
+	}
+	if task.ReferenceImagePath != "" {
+		return []string{task.ReferenceImagePath}
+	}
+	return []string{}
+}
+
+func taskReferenceThumbPaths(paths []string) []string {
+	thumbs := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		thumbs = append(thumbs, thumbPath(path, referenceThumbName(path)))
+	}
+	return thumbs
+}
+
+func referenceThumbName(path string) string {
+	name := filepath.Base(path)
+	ext := filepath.Ext(name)
+	if name == "" || ext == "" {
+		return "ref.jpg"
+	}
+	return strings.TrimSuffix(name, ext) + ".jpg"
+}
+
+func firstString(values []string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func compactStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 func thumbPath(path, name string) string {

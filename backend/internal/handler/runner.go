@@ -301,8 +301,8 @@ func runnerResponse(runner model.Runner, now time.Time) map[string]any {
 
 func runnerTaskResponse(dataDir string, task model.Task) (map[string]any, error) {
 	references := []map[string]any{}
-	if task.ReferenceImagePath != "" {
-		abs, err := service.ResolveSafePath(dataDir, task.ReferenceImagePath)
+	for _, referencePath := range taskReferenceImagePaths(task) {
+		abs, err := service.ResolveSafePath(dataDir, referencePath)
 		if err != nil {
 			return nil, err
 		}
@@ -312,8 +312,8 @@ func runnerTaskResponse(dataDir string, task model.Task) (map[string]any, error)
 		}
 		references = append(references, map[string]any{
 			"b64_json":  base64.StdEncoding.EncodeToString(data),
-			"file_name": filepath.Base(task.ReferenceImagePath),
-			"mime_type": referenceImageMIMEType(data, task.ReferenceImagePath),
+			"file_name": filepath.Base(referencePath),
+			"mime_type": referenceImageMIMEType(data, referencePath),
 		})
 	}
 	return map[string]any{
