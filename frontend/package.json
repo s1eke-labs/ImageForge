@@ -10,8 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heroui/react": "^3.0.3",
-    "@heroui/styles": "^3.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "ky": "^1.8.1",
     "lucide-react": "^0.475.0",
